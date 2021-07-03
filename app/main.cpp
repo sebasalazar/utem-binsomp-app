@@ -4,8 +4,6 @@
 #include "Bin.h"
 #include "DBService.h"
 
-void process(std::string data);
-
 /**
  * 
  * @param argc Cantidad de argumentos que reciben por la línea de comandos.
@@ -22,9 +20,10 @@ int main(int argc, char** argv) {
             std::string line;
             int row = 0;
 
+            DBService service;
             while (std::getline(csv, line)) {
                 if (row > 0) {
-                    process(line);
+                    service.process(line);
                 }
 
                 row += 1;
@@ -40,41 +39,3 @@ int main(int argc, char** argv) {
     return 0;
 }
 
-void process(std::string data) {
-    Bin bin;
-
-    data.erase(std::remove(data.begin(), data.end(), '\"'), data.end());
-    std::stringstream ss(data);
-
-    std::string text;
-    int column = 0;
-    while (std::getline(ss, text, ';')) {
-        switch (column) {
-
-            case 0:
-                bin.SetBin(text);
-                break;
-
-            case 1:
-                bin.SetBrand(text);
-                break;
-
-            case 2:
-                bin.SetIssuer(text);
-                break;
-
-            case 3:
-                if (text == "t") {
-                    bin.SetCredit(true);
-                } else {
-                    bin.SetCredit(false);
-                }
-                break;
-        }
-
-        column += 1;
-    }
-
-    // Bin completo
-    std::cout << bin.to_string() << std::endl;
-}

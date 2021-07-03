@@ -141,3 +141,52 @@ bool DBService::save(Bin bin) {
     }
     return saved;
 }
+
+void DBService::process(std::string data) {
+    Bin bin;
+
+    data.erase(std::remove(data.begin(), data.end(), '\"'), data.end());
+    std::stringstream ss(data);
+
+    std::string text;
+    int column = 0;
+    while (std::getline(ss, text, ';')) {
+        switch (column) {
+
+            case 0:
+                bin.SetBin(text);
+                break;
+
+            case 1:
+                bin.SetBrand(text);
+                break;
+
+            case 2:
+                bin.SetIssuer(text);
+                break;
+
+            case 3:
+                if (text == "t") {
+                    bin.SetCredit(true);
+                } else {
+                    bin.SetCredit(false);
+                }
+                break;
+        }
+
+        column += 1;
+    }
+
+    // Bin completo
+    // std::cout << bin.to_string() << std::endl;
+
+    bool ok = false;
+    Bin dbBin = this->GetBin(bin.GetBin());
+    if (dbBin.GetBin().empty()) {
+        ok = this->save(bin);
+    }
+
+    if (ok) {
+        std::cout << ".";
+    }
+}

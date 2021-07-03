@@ -29,6 +29,7 @@ public:
     std::string GetVersion() const;
     Bin GetBin(std::string binStr);
     bool save(Bin bin);
+    void process(std::string data);
 private:
     std::string host;
     int port;
