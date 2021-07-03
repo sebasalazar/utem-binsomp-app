@@ -86,3 +86,58 @@ std::string DBService::GetVersion() const {
 
     return version;
 }
+
+Bin DBService::GetBin(std::string binStr) {
+    Bin bin;
+    try {
+        if (!binStr.empty()) {
+            pqxx::nontransaction sql(*(this->connection));
+            std::string query = "SELECT pk, bin, brand, issuer, credit FROM bins WHERE bin='" + binStr + "'";
+            pqxx::result result = sql.exec(query);
+            if (!result.empty()) {
+                pqxx::row row = result.at(0);
+
+                long dbid = row.at("pk").as<long>();
+                std::string dbbin = row.at("bin").as<std::string>();
+                std::string dbbrand = row.at("brand").as<std::string>();
+                std::string dbissuer = row.at("issuer").as<std::string>();
+                bool dbcredit = row.at("credit").as<bool>();
+
+                bin.SetId(dbid);
+                bin.SetBin(dbbin);
+                bin.SetBrand(dbbrand);
+                bin.SetIssuer(dbissuer);
+                bin.SetCredit(dbcredit);
+
+                result.clear();
+            }
+        }
+    } catch (std::exception const &e) {
+        std::cerr << e.what() << std::endl;
+    }
+    return bin;
+}
+
+bool DBService::save(Bin bin) {
+    bool saved;
+    try {
+        pqxx::work trx(*(this->connection));
+        std::string query;
+        if (bin.GetId() == 0) {
+            // Nuevo e insertamos
+            query = "INSERT INTO bins (bin, brand, issuer, credit) VALUES ('" + trx.esc(bin.GetBin()) + "','" + trx.esc(bin.GetBrand()) + "','" + trx.esc(bin.GetIssuer()) + "','" + trx.esc(std::to_string(bin.IsCredit())) + "')";
+        } else {
+            // Antiguo y actualizamos
+            query = "UPDATE bins SET bin='" + trx.esc(bin.GetBin()) + "', brand='" + trx.esc(bin.GetBrand()) + "', issuer='" + trx.esc(bin.GetIssuer()) + "', credit='" + trx.esc(std::to_string(bin.IsCredit())) + "' WHERE pk='" + trx.esc(std::to_string(bin.GetId())) + "'";
+        }
+
+        pqxx::result result = trx.exec(query);
+        saved = (!result.empty());
+        trx.commit();
+
+    } catch (std::exception const &e) {
+        saved = false;
+        std::cerr << e.what() << std::endl;
+    }
+    return saved;
+}

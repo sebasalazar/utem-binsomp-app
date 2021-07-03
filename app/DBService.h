@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <string>
+#include <algorithm>
 #include <pqxx/pqxx>
 
 #include "Bin.h"
@@ -26,7 +27,8 @@ public:
 
     /// Consultas
     std::string GetVersion() const;
-    
+    Bin GetBin(std::string binStr);
+    bool save(Bin bin);
 private:
     std::string host;
     int port;
