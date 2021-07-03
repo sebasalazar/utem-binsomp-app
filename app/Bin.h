@@ -73,6 +73,11 @@ public:
      */
     void SetIssuer(std::string issuer);
 
+    /**
+     * 
+     * @return Devuelve la representación del Objeto
+     */
+    std::string to_string();
 private:
     long id;
     std::string bin;

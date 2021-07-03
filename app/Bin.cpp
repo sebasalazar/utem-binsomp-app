@@ -58,3 +58,7 @@ std::string Bin::GetIssuer() const {
 void Bin::SetIssuer(std::string issuer) {
     this->issuer = issuer;
 }
+
+std::string Bin::to_string() {
+    return "Bin[id=" + std::to_string(this->id) + "' | Bin='" + this->bin + "' | Brand='" + this->brand + "' | Issuer='" + this->issuer + "' | Credit='" + std::to_string(this->credit) + "']";
+}
