@@ -30,3 +30,8 @@
 *.exe
 *.out
 *.app
+/app/dist/
+/app/build/
+
+# IDE
+nbproject
