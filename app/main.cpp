@@ -1,4 +1,6 @@
 #include <iostream>
+#include <string>
+#include "Bin.h"
 
 /**
  * 
@@ -8,6 +10,9 @@
  * cualquier otro valor es asumido como error de ejecución por el sistema operativo.
  */
 int main(int argc, char** argv) {
+
+    Bin vacio;
+    std::cout << "[" << vacio.GetId() << "]" << std::endl;
 
     return 0;
 }
