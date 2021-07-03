@@ -1,6 +1,7 @@
 #include <iostream>
 #include <string>
 #include "Bin.h"
+#include "DBService.h"
 
 /**
  * 
@@ -13,6 +14,9 @@ int main(int argc, char** argv) {
 
     Bin vacio;
     std::cout << "[" << vacio.GetId() << "]" << std::endl;
+
+    DBService service;
+    std::cout << service.GetVersion() << std::endl;
 
     return 0;
 }
