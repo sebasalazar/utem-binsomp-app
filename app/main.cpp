@@ -13,13 +13,16 @@
  */
 int main(int argc, char** argv) {
 
+    // Evaluamos si están los parámetros mínimos
     if (argc >= 2) {
+        // Abrimos el archivo
         std::ifstream csv(argv[1]);
         if (csv.is_open()) {
 
-            for (std::string line; std::getline(csv, line); ) {
-                    DBService service;
-                    service.process(line);
+            for (std::string line; std::getline(csv, line);) {
+                // Procesamos línea a línea
+                DBService service;
+                service.process(line);
             }
 
             csv.close();
