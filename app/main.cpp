@@ -17,16 +17,9 @@ int main(int argc, char** argv) {
         std::ifstream csv(argv[1]);
         if (csv.is_open()) {
 
-            std::string line;
-            int row = 0;
-
-            DBService service;
-            while (std::getline(csv, line)) {
-                if (row > 0) {
+            for (std::string line; std::getline(csv, line); ) {
+                    DBService service;
                     service.process(line);
-                }
-
-                row += 1;
             }
 
             csv.close();
