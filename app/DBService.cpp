@@ -1,14 +1,17 @@
+#include <omp.h>
+
 #include "DBService.h"
 
 DBService::DBService() {
-    this->host = "157.245.230.38";
-    this->port = 6432;
+    this->host = "127.0.0.1";
+    this->port = 5432;
     this->db = "cpyddb";
     this->username = "cpyd";
     this->password = "cpyd";
 
-    const std::string url = "host='" + this->host + "' port='" + std::to_string(this->port) + "' dbname='" + this->db + "' user='" + this->username + "' password='" + this->password + "'";
-    this->connection = new pqxx::connection(url);
+    this->url = "host='" + this->host + "' port='" + std::to_string(this->port) + "' dbname='" + this->db + "' user='" + this->username + "' password='" + this->password + "' client_encoding='UTF8'";
+    //    this->connection = new pqxx::connection(url);
+    pgPool = std::make_shared<PGPool>(url);
 }
 
 DBService::DBService(std::string host, int port, std::string username, std::string password, std::string db) {
@@ -18,17 +21,12 @@ DBService::DBService(std::string host, int port, std::string username, std::stri
     this->username = username;
     this->password = password;
 
-    const std::string url = "host='" + this->host + "' port='" + std::to_string(this->port) + "' dbname='" + this->db + "' user='" + this->username + "' password='" + this->password + "'";
-    this->connection = new pqxx::connection(url);
+    this->url = "host='" + this->host + "' port='" + std::to_string(this->port) + "' dbname='" + this->db + "' user='" + this->username + "' password='" + this->password + "'";
+    //    this->connection = new pqxx::connection(url);
+    pgPool = std::make_shared<PGPool>(url);
 }
 
 DBService::~DBService() {
-    try {
-        this->connection->disconnect();
-        delete this->connection;
-    } catch (std::exception const &e) {
-        std::cerr << e.what() << std::endl;
-    }
 }
 
 std::string DBService::GetDb() const {
@@ -71,12 +69,9 @@ void DBService::SetUsername(std::string username) {
     this->username = username;
 }
 
-pqxx::connection* DBService::GetConnection() const {
-    return connection;
-}
-
 std::string DBService::GetVersion() const {
-    pqxx::nontransaction sql(*(this->connection));
+    std::shared_ptr<pqxx::lazyconnection> connection = pgPool->connection();
+    pqxx::nontransaction sql(reinterpret_cast<pqxx::lazyconnection&> (*connection.get()));
     std::string query = "SELECT VERSION()";
     pqxx::result result = sql.exec(query);
     pqxx::row row = result.at(0);
@@ -84,6 +79,7 @@ std::string DBService::GetVersion() const {
     std::string version = row.at("version").as<std::string>();
     result.clear();
 
+    pgPool->freeConnection(connection);
     return version;
 }
 
@@ -91,7 +87,9 @@ Bin DBService::GetBin(std::string binStr) {
     Bin bin;
     try {
         if (!binStr.empty()) {
-            pqxx::nontransaction sql(*(this->connection));
+            std::shared_ptr<pqxx::lazyconnection> connection = pgPool->connection();
+
+            pqxx::nontransaction sql(reinterpret_cast<pqxx::lazyconnection&> (*connection.get()));
             std::string query = "SELECT pk, bin, brand, issuer, credit FROM bins WHERE bin='" + binStr + "'";
             pqxx::result result = sql.exec(query);
             if (!result.empty()) {
@@ -110,6 +108,8 @@ Bin DBService::GetBin(std::string binStr) {
                 bin.SetCredit(dbcredit);
 
                 result.clear();
+
+                pgPool->freeConnection(connection);
             }
         }
     } catch (std::exception const &e) {
@@ -119,22 +119,28 @@ Bin DBService::GetBin(std::string binStr) {
 }
 
 bool DBService::save(Bin bin) {
-    bool saved;
+    bool saved = false;
     try {
-        pqxx::work trx(*(this->connection));
-        std::string query;
-        if (bin.GetId() == 0) {
-            // Nuevo e insertamos
-            query = "INSERT INTO bins (bin, brand, issuer, credit) VALUES ('" + trx.esc(bin.GetBin()) + "','" + trx.esc(bin.GetBrand()) + "','" + trx.esc(bin.GetIssuer()) + "','" + trx.esc(std::to_string(bin.IsCredit())) + "')";
-        } else {
-            // Antiguo y actualizamos
-            query = "UPDATE bins SET bin='" + trx.esc(bin.GetBin()) + "', brand='" + trx.esc(bin.GetBrand()) + "', issuer='" + trx.esc(bin.GetIssuer()) + "', credit='" + trx.esc(std::to_string(bin.IsCredit())) + "' WHERE pk='" + trx.esc(std::to_string(bin.GetId())) + "'";
+        if (isNumber(bin.GetBin())) {
+            std::shared_ptr<pqxx::lazyconnection> connection = pgPool->connection();
+
+            pqxx::work trx(reinterpret_cast<pqxx::lazyconnection&> (*connection.get()));
+            std::string query;
+            if (bin.GetId() == 0) {
+                // Nuevo e insertamos
+                query = "INSERT INTO bins (bin, brand, issuer, credit) VALUES ('" + trx.esc(bin.GetBin()) + "','" + trx.esc(bin.GetBrand()) + "','" + trx.esc(bin.GetIssuer()) + "','" + trx.esc(std::to_string(bin.IsCredit())) + "')";
+            } else {
+                // Antiguo y actualizamos
+                query = "UPDATE bins SET bin='" + trx.esc(bin.GetBin()) + "', brand='" + trx.esc(bin.GetBrand()) + "', issuer='" + trx.esc(bin.GetIssuer()) + "', credit='" + trx.esc(std::to_string(bin.IsCredit())) + "' WHERE pk='" + trx.esc(std::to_string(bin.GetId())) + "'";
+            }
+
+            trx.exec(query);
+            trx.commit();
+
+            pgPool->freeConnection(connection);
+
+            saved = true;
         }
-
-        pqxx::result result = trx.exec(query);
-        saved = (!result.empty());
-        trx.commit();
-
     } catch (std::exception const &e) {
         saved = false;
         std::cerr << e.what() << std::endl;
@@ -189,4 +195,10 @@ void DBService::process(std::string data) {
     if (ok) {
         std::cout << ".";
     }
+}
+
+bool DBService::isNumber(std::string text) {
+    std::string::const_iterator it = text.begin();
+    while (it != text.end() && std::isdigit(*it)) ++it;
+    return !text.empty() && it == text.end();
 }

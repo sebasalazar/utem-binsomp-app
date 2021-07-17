@@ -1,12 +1,14 @@
 #ifndef DBSERVICE_H
 #define DBSERVICE_H
 
+#include "Bin.h"
+#include "pgPool.h"
+
 #include <iostream>
 #include <string>
 #include <algorithm>
+#include <thread>
 #include <pqxx/pqxx>
-
-#include "Bin.h"
 
 class DBService {
 public:
@@ -23,20 +25,22 @@ public:
     void SetPort(int port);
     std::string GetUsername() const;
     void SetUsername(std::string username);
-    pqxx::connection* GetConnection() const;
 
     /// Consultas
     std::string GetVersion() const;
     Bin GetBin(std::string binStr);
     bool save(Bin bin);
     void process(std::string data);
+    bool isNumber(std::string s);
 private:
     std::string host;
     int port;
     std::string username;
     std::string password;
     std::string db;
-    pqxx::connection *connection;
+    std::string url;
+    //std::make_shared<PGPool> pgPool = std::make_shared<PGPool>();
+    std::shared_ptr<PGPool> pgPool;
 };
 
 #endif /* DBSERVICE_H */
