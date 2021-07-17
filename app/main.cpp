@@ -19,12 +19,20 @@ int main(int argc, char** argv) {
         std::ifstream csv(argv[1]);
         if (csv.is_open()) {
 
-            for (std::string line; std::getline(csv, line);) {
-                // Procesamos línea a línea
-                DBService service;
-                service.process(line);
-            }
+#pragma omp parallel // Crea una region paralela
+#pragma omp single // Sólo un hilo ejecutará la siguiente instrucción
+            {
+                for (std::string line; std::getline(csv, line);) {
+#pragma omp task firstprivate(line)
+                    {
+                        // Procesamos línea a línea
+                        DBService service;
+                        service.process(line);
+                    }
+                }
 
+#pragma omp taskwait
+            }
             csv.close();
         }
     } else {
