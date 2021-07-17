@@ -6,21 +6,49 @@
 #include <memory>
 #include <condition_variable>
 #include <queue>
-#include <omp.h>
 
 class PGPool {
 public:
+    /**
+     * Constructor vacío
+     */
     PGPool();
+    /**
+     * Constructor con elementos de conexión
+     * @param url texto con el formato de conexión para PostgreSQL
+     */
     PGPool(std::string url);
+    /**
+     * 
+     * @return Un puntero a una conexión
+     */
     std::shared_ptr<pqxx::lazyconnection> connection();
+    /**
+     * Libera la conexión usada, la devuelve al pool
+     * @param puntero de conexión
+     */
     void freeConnection(std::shared_ptr<pqxx::lazyconnection>);
 
 private:
+    /**
+     * Bloqueador con exclusión mutua.
+     */
     std::mutex localMutex;
+    
+    /**
+     * Semaforo de uso.
+     */
     std::condition_variable localCondition;
-    std::queue<std::shared_ptr<pqxx::lazyconnection>> localPoll;
+    
+    /**
+     * Cola de conexión (pool propiamente tal)
+     */
+    std::queue<std::shared_ptr<pqxx::lazyconnection>> localPool;
 
-    const int POOL_SIZE = 2 * omp_get_num_threads();
+    /**
+     * Cantidad de conexiones que el programa mantiene abierta
+     */
+    const int POOL_SIZE = 10;
 };
 
 #endif
